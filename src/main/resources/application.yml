@@ -61,6 +61,8 @@ app:
     accepted-actions: opened,synchronize
   audit:
     api-key: ${AUDIT_API_KEY:local-dev-key} # X-API-Key for /api/audit/**
+  llm:
+    timeout-seconds: ${LLM_TIMEOUT_SECONDS:30}
 
 # ---- Actuator ----
 management:
@@ -99,7 +101,7 @@ spring:
       base-url: https://api.groq.com/openai/v1
       chat:
         options:
-          model: ${LLM_MODEL:qwen-2.5-coder-32b}
+          model: ${LLM_MODEL:llama-3.3-70b-versatile}
           temperature: 0.1
 
 ---

@@ -6,6 +6,22 @@ All notable changes to this project are documented here. Format loosely follows
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-05-30
+### Added — Phase 6: LLM review via Spring AI
+- `LLMReviewService`: prompts the chat model per file, timeout-bounded (30s, configurable)
+  on a virtual thread; failures return empty so each file can be marked FAILED in isolation.
+- `PromptTemplateLoader`: loads `prompts/code-review.st`, literal `{filename}`/`{patch}`
+  substitution (preserves JSON braces).
+- `ReviewFeedbackParser`: extracts the JSON object (tolerant of markdown fences/prose),
+  graceful `ReviewFeedback.fallback()` on malformed output — never throws.
+- Models: `ReviewFeedback`, `ReviewIssue`, `Severity` (lenient: unknown → SUGGESTION).
+- `LlmConfig` (ChatClient bean), `LlmProperties` (`app.llm.timeout-seconds`).
+- Tests: parser (valid/fenced/unknown-severity/malformed), prompt loader, service
+  (mocked ChatClient: success + failure isolation).
+### Changed
+- Default Groq model `qwen-2.5-coder-32b` → `llama-3.3-70b-versatile` (former not
+  available on Groq; latter verified live).
+
 ## [0.5.0] - 2026-05-29
 ### Added — Phase 5: Redis cache (skip unchanged files)
 - `CacheKeyStrategy`: `review:{repoFullName}:{filename}:{sha256(patch)}` keys.

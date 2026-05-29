@@ -6,6 +6,18 @@ All notable changes to this project are documented here. Format loosely follows
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-05-29
+### Added — Phase 4: GitHub diff fetching & parsing
+- `GitHubApiClient` (Spring `RestClient`, PAT bearer auth): fetches PR changed files
+  from `/repos/{owner}/{repo}/pulls/{n}/files`; rate-limit aware — backs off until
+  `X-RateLimit-Reset` when `X-RateLimit-Remaining < 10`.
+- `Sleeper` abstraction (+ `ThreadSleeper`) so backoff is unit-testable without delay.
+- `DiffParserService`: filters binary/empty patches; splits patches > 3000 chars into
+  overlapping 2500-char chunks (200 overlap).
+- `FileDiff` and `DiffChunk` models; `GitHubProperties` typed config; `githubRestClient` bean.
+- Tests: chunking + filtering (unit); WireMock-stubbed fetch, field mapping, and
+  rate-limit backoff behavior.
+
 ## [0.3.0] - 2026-05-29
 ### Added — Phase 3: Kafka pipeline
 - Topic declarations: `pr.review.requested` and `pr.review.failed` (3 partitions, RF 1).

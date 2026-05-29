@@ -8,7 +8,7 @@ branch/PR. Status is tracked here and in [CHANGELOG.md](../CHANGELOG.md).
 | 1     | Project skeleton & infrastructure  | ✅ Done |
 | 2     | GitHub webhook receiver (HMAC)     | ✅ Done |
 | 3     | Kafka pipeline (producer/consumer/DLT) | ✅ Done |
-| 4     | GitHub diff fetching & parsing     | ⬜ Planned |
+| 4     | GitHub diff fetching & parsing     | ✅ Done |
 | 5     | Redis cache (skip unchanged files) | ⬜ Planned |
 | 6     | LLM review via Spring AI           | ⬜ Planned |
 | 6.5   | Consumer orchestrator (wires 4→9)  | ⬜ Planned |

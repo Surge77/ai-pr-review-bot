@@ -27,7 +27,9 @@ public class KafkaPullRequestEventPublisher implements PullRequestEventPublisher
         kafkaTemplate.send(KafkaTopics.REVIEW_REQUESTED, key, event)
                 .whenComplete((result, ex) -> {
                     if (ex != null) {
-                        log.error("Failed to publish PR event key={} : {}", key, ex.getMessage());
+                        log.error("Failed to publish PR event key={} : {} - routing to {}",
+                                key, ex.getMessage(), KafkaTopics.REVIEW_FAILED);
+                        kafkaTemplate.send(KafkaTopics.REVIEW_FAILED, key, event);
                     } else {
                         log.info("Published PR event key={} to {}", key, KafkaTopics.REVIEW_REQUESTED);
                     }

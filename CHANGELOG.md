@@ -6,6 +6,21 @@ All notable changes to this project are documented here. Format loosely follows
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-05-29
+### Added — Phase 3: Kafka pipeline
+- Topic declarations: `pr.review.requested` and `pr.review.failed` (3 partitions, RF 1).
+- `ReviewRequestConsumer` (group `pr-review-group`, manual `MANUAL_IMMEDIATE` ack):
+  hands events to a `ReviewProcessor` seam and commits only on success.
+- Retry + dead-letter: `DefaultErrorHandler` with `ExponentialBackOffWithMaxRetries(3)`
+  and a `DeadLetterPublishingRecoverer` routing exhausted records to `pr.review.failed`.
+- `ReviewFailedConsumer` (group `pr-review-dlt-group`): logs and records a `FAILED`
+  audit entry via `AuditLogService`.
+- `ReviewAuditLog` JPA entity (+ `ReviewStatus` enum), `ReviewAuditLogRepository`,
+  `AuditLogService.recordFailure`.
+- Producer now routes send failures to the dead-letter topic.
+- Tests: consumer handlers, DLT consumer, audit service, event serialization; plus a
+  Testcontainers `KafkaPipelineIT` (consume→process and failure→DLT→audit, CI-only).
+
 ## [0.2.0] - 2026-05-29
 ### Added — Phase 2: GitHub webhook receiver
 - `POST /api/webhooks/github`: reads the raw body before deserialization,

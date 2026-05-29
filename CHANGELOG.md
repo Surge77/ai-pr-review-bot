@@ -6,6 +6,15 @@ All notable changes to this project are documented here. Format loosely follows
 
 ## [Unreleased]
 
+## [0.6.1] - 2026-05-30
+### Added — Phase 6.5: review orchestrator
+- `ReviewOrchestrator` (`@Primary` `ReviewProcessor`): wires the per-file pipeline —
+  fetch changed files → filter binaries → cache-check (skip) → LLM review → audit,
+  then cache the result. Per-file failures are isolated and audited FAILED.
+- `AuditLogService.recordReviewed` / `recordSkipped` / `recordFileFailure` persist
+  per-file outcomes (status, feedback JSON, issue count, critical flag).
+- Tests: orchestrator paths (review/skip/fail/non-reviewable) and the new audit methods.
+
 ## [0.6.0] - 2026-05-30
 ### Added — Phase 6: LLM review via Spring AI
 - `LLMReviewService`: prompts the chat model per file, timeout-bounded (30s, configurable)

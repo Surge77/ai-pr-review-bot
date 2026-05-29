@@ -6,6 +6,14 @@ All notable changes to this project are documented here. Format loosely follows
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-05-29
+### Added — Phase 5: Redis cache (skip unchanged files)
+- `CacheKeyStrategy`: `review:{repoFullName}:{filename}:{sha256(patch)}` keys.
+- `CacheCheckService`: cache hit → skip LLM; `markReviewed` stores keys with a 7-day TTL.
+- Fail-open: Redis unavailable → review anyway (warn); `added` files always bypass.
+- Tests: key generation, hit/miss, fail-open, and TTL (unit); Testcontainers Redis
+  hit-after-mark and added-bypass (CI).
+
 ## [0.4.0] - 2026-05-29
 ### Added — Phase 4: GitHub diff fetching & parsing
 - `GitHubApiClient` (Spring `RestClient`, PAT bearer auth): fetches PR changed files

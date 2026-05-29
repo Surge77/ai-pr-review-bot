@@ -6,7 +6,7 @@ branch/PR. Status is tracked here and in [CHANGELOG.md](../CHANGELOG.md).
 | Phase | Title                              | Status |
 |-------|------------------------------------|--------|
 | 1     | Project skeleton & infrastructure  | ✅ Done |
-| 2     | GitHub webhook receiver (HMAC)     | ⬜ Planned |
+| 2     | GitHub webhook receiver (HMAC)     | ✅ Done |
 | 3     | Kafka pipeline (producer/consumer/DLT) | ⬜ Planned |
 | 4     | GitHub diff fetching & parsing     | ⬜ Planned |
 | 5     | Redis cache (skip unchanged files) | ⬜ Planned |

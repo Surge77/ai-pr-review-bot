@@ -42,6 +42,8 @@ spring:
       enable-auto-commit: false   # manual commitSync after successful processing
     producer:
       acks: all
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
     admin:
       fail-fast: false            # don't crash the app if a broker is briefly down
 

@@ -6,6 +6,21 @@ All notable changes to this project are documented here. Format loosely follows
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-05-29
+### Added — Phase 2: GitHub webhook receiver
+- `POST /api/webhooks/github`: reads the raw body before deserialization,
+  validates `X-Hub-Signature-256` (HMAC-SHA256, constant-time compare), filters to
+  accepted PR actions, and publishes valid events to Kafka — always answering fast.
+- `GitHubSignatureValidator` (standalone, testable) and `WebhookPayloadParser`
+  (lenient GitHub-JSON → `PullRequestEvent` mapping).
+- `PullRequestEvent` model with `partitionKey()` and `X-GitHub-Delivery` idempotency id.
+- `PullRequestEventPublisher` abstraction + Kafka implementation (keyed JSON to
+  `pr.review.requested`); `KafkaTopics` registry.
+- `WebhookProperties` typed config (`app.webhook.secret`, `accepted-actions`);
+  Kafka producer JSON serializers.
+- Tests: signature validator, payload parser, controller (all branches), and a
+  publisher test producing to an in-JVM Kafka broker (no Docker).
+
 ## [0.1.0] - 2026-05-29
 ### Added — Phase 1: Project skeleton & infrastructure
 - Spring Boot 3.4 / Java 21 Maven project with the full dependency set.

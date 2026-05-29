@@ -2,6 +2,7 @@ package com.aireviewer;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.context.properties.ConfigurationPropertiesScan;
 
 /**
  * Application entry point for the AI PR Review Bot.
@@ -12,6 +13,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
  * Kafka) is configured per profile in {@code application.yml}.
  */
 @SpringBootApplication
+@ConfigurationPropertiesScan
 public class AiPrReviewBotApplication {
 
     public static void main(String[] args) {

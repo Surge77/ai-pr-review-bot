@@ -12,6 +12,9 @@ target/
 *.pfx
 *.p12
 
+# ---- Local-only project notes (do not publish) ----
+CLAUDE.md
+
 # ---- IDE ----
 .idea/
 *.iml

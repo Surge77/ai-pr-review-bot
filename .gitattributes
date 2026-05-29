@@ -1,0 +1,11 @@
+# Normalize line endings: store as LF in the repo, check out native on Windows.
+* text=auto eol=lf
+
+# Scripts that must stay LF / CRLF respectively.
+*.cmd text eol=crlf
+mvnw  text eol=lf
+
+# Binary
+*.jar binary
+*.png binary
+*.pfx binary

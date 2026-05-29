@@ -1,0 +1,33 @@
+# ---- Maven / Java build output ----
+target/
+!.mvn/wrapper/maven-wrapper.jar
+*.class
+
+# ---- Secrets & local env (NEVER commit) ----
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.pfx
+*.p12
+
+# ---- IDE ----
+.idea/
+*.iml
+.vscode/
+.settings/
+.project
+.classpath
+*.swp
+
+# ---- OS ----
+.DS_Store
+Thumbs.db
+
+# ---- Logs / runtime ----
+*.log
+logs/
+
+# ---- Docker volumes (if bind-mounted locally) ----
+/data/

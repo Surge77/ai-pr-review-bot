@@ -1,0 +1,128 @@
+# ============================================================================
+#  AI PR Review Bot - base configuration (shared across all profiles)
+#  12-factor: every secret / environment-specific value comes from an env var.
+#  Default profile is `local`. Activate prod with: SPRING_PROFILES_ACTIVE=prod
+# ============================================================================
+spring:
+  application:
+    name: ai-pr-review-bot
+  profiles:
+    default: local
+
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/aireviewer}
+    username: ${DB_USERNAME:aireviewer}
+    password: ${DB_PASSWORD:aireviewer}
+    hikari:
+      maximum-pool-size: 10
+
+  jpa:
+    hibernate:
+      ddl-auto: validate          # schema owned by Flyway, never by Hibernate
+    open-in-view: false
+    properties:
+      hibernate.format_sql: false
+
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      timeout: 2s
+
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    consumer:
+      group-id: pr-review-group
+      auto-offset-reset: earliest
+      enable-auto-commit: false   # manual commitSync after successful processing
+    producer:
+      acks: all
+    admin:
+      fail-fast: false            # don't crash the app if a broker is briefly down
+
+  threads:
+    virtual:
+      enabled: true               # Java 21 virtual threads for request handling
+
+# ---- Custom application properties (typed binding added in later phases) ----
+app:
+  github:
+    api-base-url: ${GITHUB_API_BASE_URL:https://api.github.com}
+    token: ${GITHUB_TOKEN:}                 # PAT - required at runtime, never logged
+  webhook:
+    secret: ${GITHUB_WEBHOOK_SECRET:}       # HMAC-SHA256 shared secret
+    accepted-actions: opened,synchronize
+  audit:
+    api-key: ${AUDIT_API_KEY:local-dev-key} # X-API-Key for /api/audit/**
+
+# ---- Actuator ----
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: always
+  health:
+    redis:
+      enabled: true
+
+# ---- OpenAPI / Swagger ----
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+
+logging:
+  level:
+    com.aireviewer: INFO
+
+---
+# ============================================================================
+#  LOCAL profile - Groq (free tier, OpenAI-compatible, very fast)
+#  Get a key at https://console.groq.com  ->  export GROQ_API_KEY=...
+# ============================================================================
+spring:
+  config:
+    activate:
+      on-profile: local
+  ai:
+    openai:
+      api-key: ${GROQ_API_KEY:}
+      base-url: https://api.groq.com/openai/v1
+      chat:
+        options:
+          model: ${LLM_MODEL:qwen-2.5-coder-32b}
+          temperature: 0.1
+
+---
+# ============================================================================
+#  PROD profile - Google Gemini via its OpenAI-compatible endpoint.
+#  Get a key at https://aistudio.google.com  ->  export GEMINI_API_KEY=...
+#  Provider swap = ONLY the three lines below differ from local.
+# ============================================================================
+spring:
+  config:
+    activate:
+      on-profile: prod
+  ai:
+    openai:
+      api-key: ${GEMINI_API_KEY:}
+      base-url: https://generativelanguage.googleapis.com/v1beta/openai
+      chat:
+        options:
+          model: ${LLM_MODEL:gemini-2.0-flash}
+          temperature: 0.1
+  jpa:
+    properties:
+      hibernate.format_sql: false
+
+logging:
+  level:
+    com.aireviewer: INFO
+    root: WARN

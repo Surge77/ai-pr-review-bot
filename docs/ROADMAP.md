@@ -13,7 +13,7 @@ branch/PR. Status is tracked here and in [CHANGELOG.md](../CHANGELOG.md).
 | 6     | LLM review via Spring AI           | ✅ Done |
 | 6.5   | Consumer orchestrator (wires 4→9)  | ✅ Done |
 | 7     | Post inline comments to PR         | ✅ Done |
-| 8     | WebSocket live progress dashboard  | ⬜ Planned |
+| 8     | WebSocket live progress dashboard  | ✅ Done |
 | 9     | Audit log & reporting API          | ⬜ Planned |
 | 10    | Production hardening               | ⬜ Planned |
 

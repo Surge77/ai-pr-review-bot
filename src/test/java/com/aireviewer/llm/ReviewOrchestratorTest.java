@@ -22,6 +22,7 @@ import com.aireviewer.model.FileDiff;
 import com.aireviewer.model.PrReview;
 import com.aireviewer.model.PullRequestEvent;
 import com.aireviewer.model.ReviewFeedback;
+import com.aireviewer.websocket.ReviewProgressPublisher;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -36,6 +37,7 @@ class ReviewOrchestratorTest {
     @Mock private LLMReviewService llmReviewService;
     @Mock private AuditLogService auditLogService;
     @Mock private ReviewCommentAssembler reviewCommentAssembler;
+    @Mock private ReviewProgressPublisher progressPublisher;
 
     private static final PrReview ASSEMBLED = new PrReview("body", List.of());
 
@@ -43,7 +45,7 @@ class ReviewOrchestratorTest {
         lenient().when(reviewCommentAssembler.assemble(any())).thenReturn(ASSEMBLED);
         GitHubProperties props = new GitHubProperties("https://api.github.com", "tok", postComments);
         return new ReviewOrchestrator(gitHubApiClient, diffParserService, cacheCheckService,
-                llmReviewService, auditLogService, reviewCommentAssembler, props);
+                llmReviewService, auditLogService, reviewCommentAssembler, props, progressPublisher);
     }
 
     private static PullRequestEvent event() {
@@ -131,6 +133,22 @@ class ReviewOrchestratorTest {
 
         verify(reviewCommentAssembler).assemble(any());
         verify(gitHubApiClient).postReview("octo", "repo", 7, "headsha", ASSEMBLED);
+    }
+
+    @Test
+    void streams_progress_for_started_reviewed_and_completed() {
+        FileDiff f = file("A.java");
+        ReviewFeedback fb = new ReviewFeedback("ok", List.of(), true);
+        when(gitHubApiClient.fetchChangedFiles("octo", "repo", 7)).thenReturn(List.of(f));
+        when(diffParserService.isReviewable(f)).thenReturn(true);
+        when(cacheCheckService.isAlreadyReviewed("octo/repo", f)).thenReturn(false);
+        when(llmReviewService.review("A.java", f.patch())).thenReturn(Optional.of(fb));
+
+        orchestrator(true).process(event());
+
+        verify(progressPublisher).started(event(), 1);
+        verify(progressPublisher).fileReviewed(event(), "A.java", 1, 1);
+        verify(progressPublisher).completed(eq(event()), eq(1), eq(1), any());
     }
 
     @Test

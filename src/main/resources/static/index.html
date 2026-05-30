@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>AI PR Review — Live Progress</title>
+  <style>
+    :root { color-scheme: dark; }
+    body { font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+           background: #0d1117; color: #c9d1d9; margin: 0; padding: 2rem; }
+    h1 { font-size: 1.25rem; margin: 0 0 0.25rem; }
+    #status { font-size: 0.85rem; color: #8b949e; margin-bottom: 1.5rem; }
+    #status.up { color: #3fb950; }
+    #status.down { color: #f85149; }
+    .bar { height: 6px; background: #21262d; border-radius: 3px; overflow: hidden; margin: 0.5rem 0 1.5rem; }
+    .bar > span { display: block; height: 100%; width: 0; background: #58a6ff; transition: width 0.3s; }
+    ul { list-style: none; padding: 0; margin: 0; }
+    li { padding: 0.5rem 0.75rem; border-left: 3px solid #30363d; margin-bottom: 0.25rem;
+         background: #161b22; border-radius: 0 4px 4px 0; font-size: 0.85rem; }
+    li .stage { font-weight: 700; margin-right: 0.5rem; }
+    .STARTED { border-left-color: #58a6ff; } .STARTED .stage { color: #58a6ff; }
+    .FILE_REVIEWED { border-left-color: #3fb950; } .FILE_REVIEWED .stage { color: #3fb950; }
+    .FILE_SKIPPED { border-left-color: #8b949e; } .FILE_SKIPPED .stage { color: #8b949e; }
+    .FILE_FAILED { border-left-color: #f85149; } .FILE_FAILED .stage { color: #f85149; }
+    .COMPLETED { border-left-color: #a371f7; } .COMPLETED .stage { color: #a371f7; }
+    time { color: #6e7681; float: right; }
+  </style>
+</head>
+<body>
+  <h1>🤖 AI PR Review — Live Progress</h1>
+  <div id="status" class="down">connecting…</div>
+  <div class="bar"><span id="progress"></span></div>
+  <ul id="feed"></ul>
+
+  <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@stomp/stompjs@7/bundles/stomp.umd.min.js"></script>
+  <script>
+    const status = document.getElementById('status');
+    const feed = document.getElementById('feed');
+    const progress = document.getElementById('progress');
+
+    const client = new StompJs.Client({
+      webSocketFactory: () => new SockJS('/ws'),
+      reconnectDelay: 2000,
+      onConnect: () => {
+        status.textContent = 'connected';
+        status.className = 'up';
+        client.subscribe('/topic/progress', (msg) => render(JSON.parse(msg.body)));
+      },
+      onWebSocketClose: () => {
+        status.textContent = 'disconnected — retrying…';
+        status.className = 'down';
+      },
+    });
+
+    function render(e) {
+      if (e.filesTotal > 0) {
+        progress.style.width = Math.round((e.filesDone / e.filesTotal) * 100) + '%';
+      }
+      const li = document.createElement('li');
+      li.className = e.stage;
+      const when = new Date(e.timestamp).toLocaleTimeString();
+      li.innerHTML = `<span class="stage">${e.stage}</span>`
+        + `${e.repoFullName}#${e.prNumber} — ${e.message}`
+        + `<time>${when}</time>`;
+      feed.prepend(li);
+    }
+
+    client.activate();
+  </script>
+</body>
+</html>

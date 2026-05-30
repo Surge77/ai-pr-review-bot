@@ -6,6 +6,21 @@ All notable changes to this project are documented here. Format loosely follows
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-05-30
+### Added — Phase 8: WebSocket live progress dashboard
+- `WebSocketConfig`: STOMP-over-WebSocket broker — clients connect at `/ws`
+  (SockJS fallback), server broadcasts on `/topic/**`; handshake origins restricted
+  via `app.websocket.allowed-origins` (default `http://localhost:8080`).
+- `ReviewProgressPublisher`: streams stage-tagged `ReviewProgressEvent`s to
+  `/topic/progress` via `SimpMessagingTemplate` — `started` / `fileReviewed` /
+  `fileSkipped` / `fileFailed` / `completed`, each carrying a files-done/total counter.
+- `ReviewOrchestrator` now emits progress at every stage of the per-file loop.
+- Models: `ReviewProgressEvent`, `ProgressStage`; `WebSocketProperties`.
+- `static/index.html`: zero-build dashboard (SockJS + STOMP.js via CDN) showing a
+  live feed and progress bar; auto-reconnects.
+- Tests: publisher (destination + stage/field/timestamp per method) and orchestrator
+  (started/reviewed/completed emission).
+
 ## [0.7.0] - 2026-05-30
 ### Added — Phase 7: post inline comments to PR
 - `GitHubApiClient.postReview`: posts a consolidated review (`POST /pulls/{n}/reviews`,

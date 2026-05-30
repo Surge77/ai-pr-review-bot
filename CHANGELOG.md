@@ -6,6 +6,23 @@ All notable changes to this project are documented here. Format loosely follows
 
 ## [Unreleased]
 
+## [0.9.0] - 2026-05-30
+### Added — Phase 9: audit log & reporting API
+- `GET /api/audit/reviews?repo=&pr=&page=&size=`: paginated audit rows for a repo,
+  newest first (optional PR filter); returns a `PagedModel` with page metadata.
+  Page size capped at 100.
+- `GET /api/audit/stats?repo=`: per-repo aggregate — total, reviewed/skipped/failed
+  counts, total issues, critical count, and skip rate.
+- `AuditApiKeyFilter`: constant-time `X-API-Key` check (`app.audit.api-key`),
+  fails closed when unset; registered only for `/api/audit/*` via `AuditSecurityConfig`
+  (no Spring Security dependency pulled in).
+- `AuditQueryService` + reporting queries on `ReviewAuditLogRepository`, all leading
+  on `repo_full_name` to hit the V1 covering indexes.
+- DTOs: `ReviewSummaryResponse` (omits full feedback to keep lists lean),
+  `AuditStatsResponse`; `AuditProperties`.
+- Tests: filter (valid/wrong/missing/unconfigured), query service (mapping + skip-rate),
+  controller (paged JSON, PR filter, stats, missing-repo 400).
+
 ## [0.8.0] - 2026-05-30
 ### Added — Phase 8: WebSocket live progress dashboard
 - `WebSocketConfig`: STOMP-over-WebSocket broker — clients connect at `/ws`

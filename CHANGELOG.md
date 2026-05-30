@@ -5,6 +5,12 @@ All notable changes to this project are documented here. Format loosely follows
 [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
+### Fixed
+- LLM call 404'd against Groq/Gemini: `base-url` already ends in the provider's
+  versioned prefix while Spring AI's default completions path is `/v1/chat/completions`,
+  producing a doubled `…/v1/v1/chat/completions`. Set `spring.ai.openai.chat.completions-path`
+  to `/chat/completions` for both profiles. (Caught by the first live end-to-end run;
+  unit tests mock the chat client so never hit the real endpoint.)
 ### Added
 - Webhook idempotency: `WebhookDeduplicator` claims each `X-GitHub-Delivery` id via
   Redis `SETNX` (24h TTL), so a redelivered webhook is dropped (`{"status":"duplicate"}`)

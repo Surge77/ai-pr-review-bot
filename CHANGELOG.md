@@ -6,6 +6,22 @@ All notable changes to this project are documented here. Format loosely follows
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-05-30
+### Added — Phase 7: post inline comments to PR
+- `GitHubApiClient.postReview`: posts a consolidated review (`POST /pulls/{n}/reviews`,
+  event `COMMENT`) anchored to the head SHA; failures are isolated (logged, swallowed)
+  so a posting problem never aborts the pipeline. Pins `Content-Type: application/json`.
+- `DiffLineMapper`: parses unified-diff hunks to the set of RIGHT-side (new-file) lines
+  that can carry an inline comment — so out-of-diff issues never get GitHub-rejected.
+- `ReviewCommentAssembler`: turns accumulated per-file feedback into one `PrReview` —
+  in-diff issues become inline comments, line-less/out-of-diff issues fold into the body.
+- `ReviewOrchestrator` now collects reviewed files and posts a single review at the end.
+- `app.github.post-comments` toggle (`GITHUB_POST_COMMENTS`, default true) for dry-run.
+- Models: `PrReview`, `PrReviewComment`, `ReviewedFile`.
+- Tests: line mapping (added/context/removed, multi-hunk, blank), assembler (inline vs
+  body split, summaries), WireMock post (payload shape + failure isolation), orchestrator
+  (single consolidated post, dry-run).
+
 ## [0.6.1] - 2026-05-30
 ### Added — Phase 6.5: review orchestrator
 - `ReviewOrchestrator` (`@Primary` `ReviewProcessor`): wires the per-file pipeline —

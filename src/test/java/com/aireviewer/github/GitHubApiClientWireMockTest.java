@@ -1,22 +1,30 @@
 package com.aireviewer.github;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
+import static com.github.tomakehurst.wiremock.client.WireMock.containing;
 import static com.github.tomakehurst.wiremock.client.WireMock.get;
 import static com.github.tomakehurst.wiremock.client.WireMock.okJson;
+import static com.github.tomakehurst.wiremock.client.WireMock.post;
+import static com.github.tomakehurst.wiremock.client.WireMock.postRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlPathEqualTo;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 
+import java.net.http.HttpClient;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.List;
 
 import com.aireviewer.model.FileDiff;
+import com.aireviewer.model.PrReview;
+import com.aireviewer.model.PrReviewComment;
 import com.github.tomakehurst.wiremock.WireMockServer;
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.web.client.RestClient;
 
 class GitHubApiClientWireMockTest {
@@ -54,7 +62,14 @@ class GitHubApiClientWireMockTest {
         server = new WireMockServer(WireMockConfiguration.options().dynamicPort());
         server.start();
         sleeper = new RecordingSleeper();
-        RestClient restClient = RestClient.builder().baseUrl(server.baseUrl()).build();
+        // Pin HTTP/1.1: WireMock serves 1.1, but the JDK client otherwise tries HTTP/2
+        // and aborts POST-with-body. Real GitHub speaks HTTP/2, so prod is unaffected.
+        var requestFactory = new JdkClientHttpRequestFactory(
+                HttpClient.newBuilder().version(HttpClient.Version.HTTP_1_1).build());
+        RestClient restClient = RestClient.builder()
+                .requestFactory(requestFactory)
+                .baseUrl(server.baseUrl())
+                .build();
         client = new GitHubApiClient(restClient, sleeper, Clock.fixed(NOW, ZoneOffset.UTC));
     }
 
@@ -104,6 +119,34 @@ class GitHubApiClientWireMockTest {
 
         assertThat(sleeper.calls).isEqualTo(1);
         assertThat(sleeper.lastMillis).isEqualTo(2000L);
+    }
+
+    private static final String REVIEWS_PATH = "/repos/octo/hello/pulls/1/reviews";
+
+    @Test
+    void posts_review_with_body_and_inline_comments() {
+        server.stubFor(post(urlPathEqualTo(REVIEWS_PATH))
+                .willReturn(okJson("{\"id\": 1, \"state\": \"COMMENTED\"}")));
+        PrReview review = new PrReview("## review body",
+                List.of(new PrReviewComment("src/Main.java", 12, "fix this")));
+
+        client.postReview("octo", "hello", 1, "headsha", review);
+
+        server.verify(postRequestedFor(urlPathEqualTo(REVIEWS_PATH))
+                .withRequestBody(containing("\"commit_id\":\"headsha\""))
+                .withRequestBody(containing("\"event\":\"COMMENT\""))
+                .withRequestBody(containing("\"side\":\"RIGHT\""))
+                .withRequestBody(containing("src/Main.java")));
+    }
+
+    @Test
+    void posting_failure_is_isolated_and_does_not_throw() {
+        server.stubFor(post(urlPathEqualTo(REVIEWS_PATH))
+                .willReturn(aResponse().withStatus(422)));
+        PrReview review = new PrReview("body", List.of());
+
+        assertThatCode(() -> client.postReview("octo", "hello", 1, "headsha", review))
+                .doesNotThrowAnyException();
     }
 
     private static final class RecordingSleeper implements Sleeper {

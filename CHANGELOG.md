@@ -5,6 +5,8 @@ All notable changes to this project are documented here. Format loosely follows
 [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
+
+## [0.1.1] - 2026-05-30
 ### Fixed
 - LLM call 404'd against Groq/Gemini: `base-url` already ends in the provider's
   versioned prefix while Spring AI's default completions path is `/v1/chat/completions`,
@@ -28,6 +30,10 @@ All notable changes to this project are documented here. Format loosely follows
   GitHub call can never hang a consumer thread.
 - CI actions bumped to Node24-compatible majors: `checkout@v6`, `setup-java@v5`,
   `upload-artifact@v7`.
+### Docs
+- `.env.example` now lists all runtime knobs: `LLM_TIMEOUT_SECONDS`,
+  `GITHUB_POST_COMMENTS`, `WEBHOOK_RATE_MAX`/`WEBHOOK_RATE_WINDOW`, `WS_ALLOWED_ORIGINS`
+  (and corrects the default model comment).
 
 ## [0.10.0] - 2026-05-30
 ### Added — Phase 10: production hardening

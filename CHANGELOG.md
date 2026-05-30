@@ -5,6 +5,19 @@ All notable changes to this project are documented here. Format loosely follows
 [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
+### Fixed
+- CI: made `mvnw` executable (was `100644` → `./mvnw` failed with exit 126 on the
+  Linux runner), so the pipeline runs for the first time.
+- `KafkaConsumerConfig` now binds the consumer to `KafkaConnectionDetails` instead of
+  the static `localhost:9092` default — the custom factory previously ignored the
+  Testcontainers `@ServiceConnection` broker, so `KafkaPipelineIT` consumed nothing in CI.
+- `KafkaPipelineIT` mocks the `@Primary` `reviewOrchestrator` by name (two
+  `ReviewProcessor` beans exist since Phase 6.5, making a by-type mock ambiguous).
+### Changed
+- `githubRestClient` now has bounded connect (5s) and read (10s) timeouts so a stalled
+  GitHub call can never hang a consumer thread.
+- CI actions bumped to Node24-compatible majors: `checkout@v6`, `setup-java@v5`,
+  `upload-artifact@v7`.
 
 ## [0.10.0] - 2026-05-30
 ### Added — Phase 10: production hardening

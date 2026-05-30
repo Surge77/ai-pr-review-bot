@@ -33,6 +33,7 @@ class WebhookControllerTest {
     @Mock private GitHubSignatureValidator signatureValidator;
     @Mock private WebhookPayloadParser payloadParser;
     @Mock private PullRequestEventPublisher eventPublisher;
+    @Mock private WebhookDeduplicator deduplicator;
 
     private WebhookController controller;
 
@@ -40,7 +41,7 @@ class WebhookControllerTest {
     void setUp() {
         controller = new WebhookController(signatureValidator, payloadParser, eventPublisher,
                 new WebhookProperties("secret", List.of("opened", "synchronize")),
-                allowingLimiter());
+                allowingLimiter(), deduplicator);
     }
 
     private static WebhookRateLimiter allowingLimiter() {
@@ -58,7 +59,7 @@ class WebhookControllerTest {
                 new WebhookRateLimiter(new WebhookRateLimitProperties(1, 60), Clock.systemUTC());
         saturated.tryAcquire(); // consume the only token
         WebhookController limited = new WebhookController(signatureValidator, payloadParser,
-                eventPublisher, new WebhookProperties("secret", List.of("opened")), saturated);
+                eventPublisher, new WebhookProperties("secret", List.of("opened")), saturated, deduplicator);
 
         ResponseEntity<Map<String, String>> response =
                 limited.receive(BODY, SIG, "pull_request", "d-1");
@@ -108,6 +109,7 @@ class WebhookControllerTest {
         PullRequestEvent opened = event("opened");
         when(signatureValidator.isValid(BODY, SIG)).thenReturn(true);
         when(payloadParser.parse(BODY, "d-1")).thenReturn(opened);
+        when(deduplicator.isFirstDelivery("d-1")).thenReturn(true);
 
         ResponseEntity<Map<String, String>> response =
                 controller.receive(BODY, SIG, "pull_request", "d-1");
@@ -115,6 +117,20 @@ class WebhookControllerTest {
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(response.getBody()).containsEntry("status", "accepted");
         verify(eventPublisher).publish(opened);
+    }
+
+    @Test
+    void duplicate_delivery_is_dropped_and_not_published() throws Exception {
+        when(signatureValidator.isValid(BODY, SIG)).thenReturn(true);
+        when(payloadParser.parse(BODY, "d-1")).thenReturn(event("opened"));
+        when(deduplicator.isFirstDelivery("d-1")).thenReturn(false);
+
+        ResponseEntity<Map<String, String>> response =
+                controller.receive(BODY, SIG, "pull_request", "d-1");
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody()).containsEntry("status", "duplicate");
+        verify(eventPublisher, never()).publish(any());
     }
 
     @Test

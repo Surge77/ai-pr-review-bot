@@ -113,6 +113,7 @@ spring:
       api-key: ${GROQ_API_KEY:}
       base-url: https://api.groq.com/openai/v1
       chat:
+        completions-path: /chat/completions   # base-url already ends in /v1; avoid doubling it
         options:
           model: ${LLM_MODEL:llama-3.3-70b-versatile}
           temperature: 0.1
@@ -132,6 +133,7 @@ spring:
       api-key: ${GEMINI_API_KEY:}
       base-url: https://generativelanguage.googleapis.com/v1beta/openai
       chat:
+        completions-path: /chat/completions   # base-url ends in /openai; avoid the default /v1 prefix
         options:
           model: ${LLM_MODEL:gemini-2.0-flash}
           temperature: 0.1

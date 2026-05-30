@@ -15,7 +15,7 @@ branch/PR. Status is tracked here and in [CHANGELOG.md](../CHANGELOG.md).
 | 7     | Post inline comments to PR         | ✅ Done |
 | 8     | WebSocket live progress dashboard  | ✅ Done |
 | 9     | Audit log & reporting API          | ✅ Done |
-| 10    | Production hardening               | ⬜ Planned |
+| 10    | Production hardening               | ✅ Done |
 
 ## Phase 1 — delivered
 

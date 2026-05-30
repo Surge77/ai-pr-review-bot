@@ -51,7 +51,7 @@ class AuditControllerTest {
 
     @Test
     void reviews_returns_page_of_projections() throws Exception {
-        when(auditQueryService.listReviews(eq(REPO), isNull(), any()))
+        when(auditQueryService.listReviews(eq(REPO), isNull(), isNull(), any()))
                 .thenReturn(new PageImpl<>(List.of(summary())));
 
         mockMvc.perform(get("/api/audit/reviews").param("repo", REPO))
@@ -62,12 +62,22 @@ class AuditControllerTest {
 
     @Test
     void reviews_passes_pr_filter_through() throws Exception {
-        when(auditQueryService.listReviews(eq(REPO), eq(7), any()))
+        when(auditQueryService.listReviews(eq(REPO), eq(7), isNull(), any()))
                 .thenReturn(new PageImpl<>(List.of(summary())));
 
         mockMvc.perform(get("/api/audit/reviews").param("repo", REPO).param("pr", "7"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content[0].prNumber").value(7));
+    }
+
+    @Test
+    void reviews_passes_status_filter_through() throws Exception {
+        when(auditQueryService.listReviews(eq(REPO), isNull(), eq(ReviewStatus.FAILED), any()))
+                .thenReturn(new PageImpl<>(List.of(summary())));
+
+        mockMvc.perform(get("/api/audit/reviews").param("repo", REPO).param("status", "FAILED"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content[0].filePath").value("A.java"));
     }
 
     @Test

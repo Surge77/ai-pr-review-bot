@@ -35,6 +35,7 @@ public class WebhookController {
     private final WebhookPayloadParser payloadParser;
     private final PullRequestEventPublisher eventPublisher;
     private final WebhookProperties webhookProperties;
+    private final WebhookRateLimiter rateLimiter;
 
     /**
      * Handles a GitHub webhook delivery.
@@ -43,9 +44,10 @@ public class WebhookController {
      * @param signature  {@code X-Hub-Signature-256} header
      * @param eventType  {@code X-GitHub-Event} header
      * @param deliveryId {@code X-GitHub-Delivery} header (idempotency key)
-     * @return {@code 401} if the signature is invalid; {@code 200} with
-     *         {@code {"status":"ignored"}} for non-PR or unaccepted actions;
-     *         {@code 200} with {@code {"status":"accepted"}} when queued
+     * @return {@code 429} when the rate limit is exceeded; {@code 401} if the
+     *         signature is invalid; {@code 200} with {@code {"status":"ignored"}}
+     *         for non-PR or unaccepted actions; {@code 200} with
+     *         {@code {"status":"accepted"}} when queued
      */
     @Operation(summary = "Receive a GitHub webhook delivery")
     @PostMapping("/github")
@@ -54,6 +56,12 @@ public class WebhookController {
             @RequestHeader(value = "X-Hub-Signature-256", required = false) String signature,
             @RequestHeader(value = "X-GitHub-Event", required = false) String eventType,
             @RequestHeader(value = "X-GitHub-Delivery", required = false) String deliveryId) {
+
+        if (!rateLimiter.tryAcquire()) {
+            log.warn("Rate limit exceeded; rejecting webhook delivery={}", deliveryId);
+            return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                    .body(Map.of("status", "rate_limited"));
+        }
 
         if (!signatureValidator.isValid(payload, signature)) {
             log.warn("Rejected webhook delivery={} : invalid or missing signature", deliveryId);

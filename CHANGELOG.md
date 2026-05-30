@@ -6,6 +6,27 @@ All notable changes to this project are documented here. Format loosely follows
 
 ## [Unreleased]
 
+## [0.10.0] - 2026-05-30
+### Added — Phase 10: production hardening
+- `WebhookRateLimiter` + `WebhookRateLimitProperties`: global fixed-window cap on
+  inbound webhook deliveries (`app.webhook.rate-limit.*`, default 100/60s);
+  webhook returns `429` when saturated, before any HMAC work.
+- `SecurityHeadersFilter`: adds CSP, `X-Content-Type-Options`, `X-Frame-Options`
+  (SAMEORIGIN), `Referrer-Policy`, and HSTS to every response. CSP whitelists the
+  jsDelivr CDN for the SockJS/STOMP clients and forbids inline script.
+- `GlobalExceptionHandler` (`@RestControllerAdvice` extending
+  `ResponseEntityExceptionHandler`): unexpected errors map to a generic `500`
+  problem detail — internals logged server-side, never returned to clients.
+- `GET /api/audit/reviews` gains an optional `status` filter (PR filter still wins).
+- Graceful shutdown: `server.shutdown=graceful` + 20s drain timeout.
+### Changed
+- Dashboard JS/CSS externalized to `static/app.js` / `static/app.css` so the CSP
+  needs no `'unsafe-inline'`.
+- `LLMReviewService` now shuts down its virtual-thread executor on bean destroy.
+### Tests
+- Rate limiter (429 path), security headers, exception handler (no detail leak),
+  audit status filter. 92 unit tests; JaCoCo 80% gate met.
+
 ## [0.9.0] - 2026-05-30
 ### Added — Phase 9: audit log & reporting API
 - `GET /api/audit/reviews?repo=&pr=&page=&size=`: paginated audit rows for a repo,

@@ -51,6 +51,13 @@ spring:
     virtual:
       enabled: true               # Java 21 virtual threads for request handling
 
+  lifecycle:
+    timeout-per-shutdown-phase: 20s   # bound graceful-shutdown draining
+
+# ---- Server ----
+server:
+  shutdown: graceful              # drain in-flight requests before exit
+
 # ---- Custom application properties (typed binding added in later phases) ----
 app:
   github:
@@ -60,6 +67,9 @@ app:
   webhook:
     secret: ${GITHUB_WEBHOOK_SECRET:}       # HMAC-SHA256 shared secret
     accepted-actions: opened,synchronize
+    rate-limit:
+      max-requests: ${WEBHOOK_RATE_MAX:100} # global fixed-window cap on inbound deliveries
+      window-seconds: ${WEBHOOK_RATE_WINDOW:60}
   websocket:
     allowed-origins: ${WS_ALLOWED_ORIGINS:http://localhost:8080}  # STOMP/SockJS handshake origins
   audit:

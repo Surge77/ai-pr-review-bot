@@ -1,6 +1,7 @@
 package com.aireviewer.audit;
 
 import com.aireviewer.model.AuditStatsResponse;
+import com.aireviewer.model.ReviewStatus;
 import com.aireviewer.model.ReviewSummaryResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -34,6 +35,7 @@ public class AuditController {
      *
      * @param repo     {@code owner/repo} (required)
      * @param pr       PR number to filter by (optional)
+     * @param status   review status to filter by (optional); ignored when {@code pr} is set
      * @param pageable page request; defaults to size 20, capped at {@value #MAX_PAGE_SIZE}
      * @return a page of review projections with pagination metadata
      */
@@ -42,8 +44,9 @@ public class AuditController {
     public PagedModel<ReviewSummaryResponse> reviews(
             @RequestParam String repo,
             @RequestParam(required = false) Integer pr,
+            @RequestParam(required = false) ReviewStatus status,
             @PageableDefault(size = 20) Pageable pageable) {
-        return new PagedModel<>(auditQueryService.listReviews(repo, pr, capped(pageable)));
+        return new PagedModel<>(auditQueryService.listReviews(repo, pr, status, capped(pageable)));
     }
 
     /**

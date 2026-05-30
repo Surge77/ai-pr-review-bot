@@ -1,6 +1,8 @@
 package com.aireviewer.llm;
 
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -12,12 +14,14 @@ import java.util.Optional;
 
 import com.aireviewer.audit.AuditLogService;
 import com.aireviewer.cache.CacheCheckService;
+import com.aireviewer.config.GitHubProperties;
 import com.aireviewer.diff.DiffParserService;
 import com.aireviewer.github.GitHubApiClient;
+import com.aireviewer.github.ReviewCommentAssembler;
 import com.aireviewer.model.FileDiff;
+import com.aireviewer.model.PrReview;
 import com.aireviewer.model.PullRequestEvent;
 import com.aireviewer.model.ReviewFeedback;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -31,13 +35,15 @@ class ReviewOrchestratorTest {
     @Mock private CacheCheckService cacheCheckService;
     @Mock private LLMReviewService llmReviewService;
     @Mock private AuditLogService auditLogService;
+    @Mock private ReviewCommentAssembler reviewCommentAssembler;
 
-    private ReviewOrchestrator orchestrator;
+    private static final PrReview ASSEMBLED = new PrReview("body", List.of());
 
-    @BeforeEach
-    void setUp() {
-        orchestrator = new ReviewOrchestrator(gitHubApiClient, diffParserService,
-                cacheCheckService, llmReviewService, auditLogService);
+    private ReviewOrchestrator orchestrator(boolean postComments) {
+        lenient().when(reviewCommentAssembler.assemble(any())).thenReturn(ASSEMBLED);
+        GitHubProperties props = new GitHubProperties("https://api.github.com", "tok", postComments);
+        return new ReviewOrchestrator(gitHubApiClient, diffParserService, cacheCheckService,
+                llmReviewService, auditLogService, reviewCommentAssembler, props);
     }
 
     private static PullRequestEvent event() {
@@ -53,7 +59,7 @@ class ReviewOrchestratorTest {
     void splits_repo_full_name_and_fetches_files() {
         when(gitHubApiClient.fetchChangedFiles("octo", "repo", 7)).thenReturn(List.of());
 
-        orchestrator.process(event());
+        orchestrator(true).process(event());
 
         verify(gitHubApiClient).fetchChangedFiles("octo", "repo", 7);
     }
@@ -67,7 +73,7 @@ class ReviewOrchestratorTest {
         when(cacheCheckService.isAlreadyReviewed("octo/repo", f)).thenReturn(false);
         when(llmReviewService.review("A.java", f.patch())).thenReturn(Optional.of(fb));
 
-        orchestrator.process(event());
+        orchestrator(true).process(event());
 
         verify(auditLogService).recordReviewed(eq(event()), eq(f), eq(fb));
         verify(cacheCheckService).markReviewed("octo/repo", f);
@@ -80,7 +86,7 @@ class ReviewOrchestratorTest {
         when(diffParserService.isReviewable(f)).thenReturn(true);
         when(cacheCheckService.isAlreadyReviewed("octo/repo", f)).thenReturn(true);
 
-        orchestrator.process(event());
+        orchestrator(true).process(event());
 
         verify(auditLogService).recordSkipped(eq(event()), eq(f));
         verifyNoInteractions(llmReviewService);
@@ -94,7 +100,7 @@ class ReviewOrchestratorTest {
         when(cacheCheckService.isAlreadyReviewed("octo/repo", f)).thenReturn(false);
         when(llmReviewService.review("C.java", f.patch())).thenReturn(Optional.empty());
 
-        orchestrator.process(event());
+        orchestrator(true).process(event());
 
         verify(auditLogService).recordFileFailure(eq(event()), eq(f));
         verify(cacheCheckService, never()).markReviewed("octo/repo", f);
@@ -106,8 +112,38 @@ class ReviewOrchestratorTest {
         when(gitHubApiClient.fetchChangedFiles("octo", "repo", 7)).thenReturn(List.of(binary));
         when(diffParserService.isReviewable(binary)).thenReturn(false);
 
-        orchestrator.process(event());
+        orchestrator(true).process(event());
 
         verifyNoInteractions(llmReviewService, cacheCheckService, auditLogService);
+        verify(gitHubApiClient, never()).postReview(any(), any(), eq(7), any(), any());
+    }
+
+    @Test
+    void posts_one_consolidated_review_for_reviewed_files() {
+        FileDiff f = file("A.java");
+        ReviewFeedback fb = new ReviewFeedback("ok", List.of(), true);
+        when(gitHubApiClient.fetchChangedFiles("octo", "repo", 7)).thenReturn(List.of(f));
+        when(diffParserService.isReviewable(f)).thenReturn(true);
+        when(cacheCheckService.isAlreadyReviewed("octo/repo", f)).thenReturn(false);
+        when(llmReviewService.review("A.java", f.patch())).thenReturn(Optional.of(fb));
+
+        orchestrator(true).process(event());
+
+        verify(reviewCommentAssembler).assemble(any());
+        verify(gitHubApiClient).postReview("octo", "repo", 7, "headsha", ASSEMBLED);
+    }
+
+    @Test
+    void dry_run_assembles_but_does_not_post() {
+        FileDiff f = file("A.java");
+        ReviewFeedback fb = new ReviewFeedback("ok", List.of(), true);
+        when(gitHubApiClient.fetchChangedFiles("octo", "repo", 7)).thenReturn(List.of(f));
+        when(diffParserService.isReviewable(f)).thenReturn(true);
+        when(cacheCheckService.isAlreadyReviewed("octo/repo", f)).thenReturn(false);
+        when(llmReviewService.review("A.java", f.patch())).thenReturn(Optional.of(fb));
+
+        orchestrator(false).process(event());
+
+        verify(gitHubApiClient, never()).postReview(any(), any(), eq(7), any(), any());
     }
 }

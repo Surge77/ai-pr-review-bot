@@ -1,16 +1,21 @@
 package com.aireviewer.llm;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
 import com.aireviewer.audit.AuditLogService;
 import com.aireviewer.cache.CacheCheckService;
+import com.aireviewer.config.GitHubProperties;
 import com.aireviewer.diff.DiffParserService;
 import com.aireviewer.github.GitHubApiClient;
+import com.aireviewer.github.ReviewCommentAssembler;
 import com.aireviewer.kafka.ReviewProcessor;
 import com.aireviewer.model.FileDiff;
+import com.aireviewer.model.PrReview;
 import com.aireviewer.model.PullRequestEvent;
 import com.aireviewer.model.ReviewFeedback;
+import com.aireviewer.model.ReviewedFile;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Primary;
@@ -37,6 +42,8 @@ public class ReviewOrchestrator implements ReviewProcessor {
     private final CacheCheckService cacheCheckService;
     private final LLMReviewService llmReviewService;
     private final AuditLogService auditLogService;
+    private final ReviewCommentAssembler reviewCommentAssembler;
+    private final GitHubProperties gitHubProperties;
 
     @Override
     public void process(PullRequestEvent event) {
@@ -46,28 +53,45 @@ public class ReviewOrchestrator implements ReviewProcessor {
         log.info("Reviewing {} changed file(s) for {}#{}",
                 files.size(), event.repoFullName(), event.prNumber());
 
+        List<ReviewedFile> reviewed = new ArrayList<>();
         for (FileDiff file : files) {
-            reviewFile(event, file);
+            reviewFile(event, file).ifPresent(reviewed::add);
         }
+        publishReview(event, repoName, reviewed);
     }
 
-    private void reviewFile(PullRequestEvent event, FileDiff file) {
+    private Optional<ReviewedFile> reviewFile(PullRequestEvent event, FileDiff file) {
         if (!diffParserService.isReviewable(file)) {
-            return;
+            return Optional.empty();
         }
         if (cacheCheckService.isAlreadyReviewed(event.repoFullName(), file)) {
             auditLogService.recordSkipped(event, file);
-            return;
+            return Optional.empty();
         }
 
         Optional<ReviewFeedback> feedback = llmReviewService.review(file.filename(), file.patch());
         if (feedback.isEmpty()) {
             auditLogService.recordFileFailure(event, file);
-            return;
+            return Optional.empty();
         }
 
         auditLogService.recordReviewed(event, file, feedback.get());
         cacheCheckService.markReviewed(event.repoFullName(), file);
+        return Optional.of(new ReviewedFile(file, feedback.get()));
+    }
+
+    private void publishReview(PullRequestEvent event, String repoName, List<ReviewedFile> reviewed) {
+        if (reviewed.isEmpty()) {
+            return;
+        }
+        PrReview review = reviewCommentAssembler.assemble(reviewed);
+        if (!gitHubProperties.postComments()) {
+            log.info("Comment posting disabled (dry-run); skipping review for {}#{}",
+                    event.repoFullName(), event.prNumber());
+            return;
+        }
+        gitHubApiClient.postReview(event.repoOwner(), repoName, event.prNumber(),
+                event.headSha(), review);
     }
 
     private String repoName(String repoFullName) {

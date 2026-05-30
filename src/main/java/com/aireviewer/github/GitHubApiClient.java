@@ -4,12 +4,17 @@ import java.time.Clock;
 import java.util.List;
 
 import com.aireviewer.model.FileDiff;
+import com.aireviewer.model.PrReview;
+import com.aireviewer.model.PrReviewComment;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
+import org.springframework.web.client.RestClientException;
 
 /**
  * Client for the GitHub REST API. Authenticates via the configured PAT and is
@@ -22,6 +27,9 @@ import org.springframework.web.client.RestClient;
 public class GitHubApiClient {
 
     private static final String FILES_PATH = "/repos/{owner}/{repo}/pulls/{number}/files?per_page=100";
+    private static final String REVIEWS_PATH = "/repos/{owner}/{repo}/pulls/{number}/reviews";
+    private static final String EVENT_COMMENT = "COMMENT";
+    private static final String SIDE_RIGHT = "RIGHT";
     private static final String HEADER_REMAINING = "X-RateLimit-Remaining";
     private static final String HEADER_RESET = "X-RateLimit-Reset";
     private static final int RATE_LIMIT_THRESHOLD = 10;
@@ -50,6 +58,50 @@ public class GitHubApiClient {
 
         FileDiff[] body = response.getBody();
         return body == null ? List.of() : List.of(body);
+    }
+
+    /**
+     * Posts a consolidated review (summary body + inline comments) to a pull
+     * request. Failures are isolated — logged and swallowed — so a posting problem
+     * never aborts the rest of the pipeline; the audit log remains the record of
+     * what was reviewed.
+     *
+     * @param owner     repository owner
+     * @param repo      repository name
+     * @param prNumber  pull request number
+     * @param commitSha head commit the review is anchored to
+     * @param review    the assembled body and inline comments
+     */
+    public void postReview(String owner, String repo, int prNumber, String commitSha, PrReview review) {
+        ReviewPayload payload = new ReviewPayload(commitSha, review.body(), EVENT_COMMENT,
+                review.comments().stream().map(GitHubApiClient::toComment).toList());
+        try {
+            ResponseEntity<Void> response = githubRestClient.post()
+                    .uri(REVIEWS_PATH, owner, repo, prNumber)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(payload)
+                    .retrieve()
+                    .toBodilessEntity();
+            backoffIfRateLimited(response.getHeaders());
+            log.info("Posted review to {}/{}#{} ({} inline comment(s))",
+                    owner, repo, prNumber, payload.comments().size());
+        } catch (RestClientException e) {
+            log.error("Failed to post review to {}/{}#{}: {}", owner, repo, prNumber, e.getMessage());
+        }
+    }
+
+    private static CommentPayload toComment(PrReviewComment comment) {
+        return new CommentPayload(comment.path(), comment.line(), SIDE_RIGHT, comment.body());
+    }
+
+    private record ReviewPayload(
+            @JsonProperty("commit_id") String commitId,
+            String body,
+            String event,
+            List<CommentPayload> comments) {
+    }
+
+    private record CommentPayload(String path, int line, String side, String body) {
     }
 
     private void backoffIfRateLimited(HttpHeaders headers) {

@@ -5,6 +5,10 @@ All notable changes to this project are documented here. Format loosely follows
 [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
+### Added
+- Webhook idempotency: `WebhookDeduplicator` claims each `X-GitHub-Delivery` id via
+  Redis `SETNX` (24h TTL), so a redelivered webhook is dropped (`{"status":"duplicate"}`)
+  instead of triggering a second review. Fails open if Redis is unavailable.
 ### Fixed
 - CI: made `mvnw` executable (was `100644` → `./mvnw` failed with exit 126 on the
   Linux runner), so the pipeline runs for the first time.

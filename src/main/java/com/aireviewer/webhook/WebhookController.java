@@ -36,6 +36,7 @@ public class WebhookController {
     private final PullRequestEventPublisher eventPublisher;
     private final WebhookProperties webhookProperties;
     private final WebhookRateLimiter rateLimiter;
+    private final WebhookDeduplicator deduplicator;
 
     /**
      * Handles a GitHub webhook delivery.
@@ -47,7 +48,8 @@ public class WebhookController {
      * @return {@code 429} when the rate limit is exceeded; {@code 401} if the
      *         signature is invalid; {@code 200} with {@code {"status":"ignored"}}
      *         for non-PR or unaccepted actions; {@code 200} with
-     *         {@code {"status":"accepted"}} when queued
+     *         {@code {"status":"duplicate"}} for a repeated delivery id; {@code 200}
+     *         with {@code {"status":"accepted"}} when queued
      */
     @Operation(summary = "Receive a GitHub webhook delivery")
     @PostMapping("/github")
@@ -83,6 +85,12 @@ public class WebhookController {
 
         if (!webhookProperties.acceptedActions().contains(event.action())) {
             return ResponseEntity.ok(Map.of("status", "ignored"));
+        }
+
+        if (!deduplicator.isFirstDelivery(deliveryId)) {
+            log.info("Duplicate delivery={} for {}#{}; already queued",
+                    deliveryId, event.repoFullName(), event.prNumber());
+            return ResponseEntity.ok(Map.of("status", "duplicate"));
         }
 
         eventPublisher.publish(event);

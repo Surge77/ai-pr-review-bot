@@ -60,6 +60,8 @@ app:
   webhook:
     secret: ${GITHUB_WEBHOOK_SECRET:}       # HMAC-SHA256 shared secret
     accepted-actions: opened,synchronize
+  websocket:
+    allowed-origins: ${WS_ALLOWED_ORIGINS:http://localhost:8080}  # STOMP/SockJS handshake origins
   audit:
     api-key: ${AUDIT_API_KEY:local-dev-key} # X-API-Key for /api/audit/**
   llm:

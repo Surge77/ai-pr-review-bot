@@ -8,7 +8,7 @@ import com.aireviewer.model.PullRequestEvent;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.serialization.StringDeserializer;
-import org.springframework.boot.autoconfigure.kafka.KafkaProperties;
+import org.springframework.boot.autoconfigure.kafka.KafkaConnectionDetails;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
@@ -36,10 +36,10 @@ public class KafkaConsumerConfig {
     private static final double BACKOFF_MULTIPLIER = 2.0;
     private static final long BACKOFF_MAX_MS = 5_000L;
 
-    private final KafkaProperties kafkaProperties;
+    private final KafkaConnectionDetails kafkaConnectionDetails;
 
-    public KafkaConsumerConfig(KafkaProperties kafkaProperties) {
-        this.kafkaProperties = kafkaProperties;
+    public KafkaConsumerConfig(KafkaConnectionDetails kafkaConnectionDetails) {
+        this.kafkaConnectionDetails = kafkaConnectionDetails;
     }
 
     /**
@@ -52,7 +52,7 @@ public class KafkaConsumerConfig {
     @Bean
     public ConsumerFactory<String, PullRequestEvent> reviewConsumerFactory() {
         Map<String, Object> config = new HashMap<>();
-        config.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, kafkaProperties.getBootstrapServers());
+        config.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, kafkaConnectionDetails.getBootstrapServers());
         config.put(ConsumerConfig.GROUP_ID_CONFIG, CONSUMER_GROUP);
         config.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
         config.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, false);

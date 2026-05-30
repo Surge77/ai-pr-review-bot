@@ -60,7 +60,10 @@ class KafkaPipelineIT {
         registry.add("spring.ai.openai.api-key", () -> "test-key");
     }
 
-    @MockitoBean
+    // Override the @Primary orchestrator specifically — the consumer injects it by
+    // type, and a bare by-type @MockitoBean is ambiguous now that two
+    // ReviewProcessor beans exist (orchestrator + placeholder).
+    @MockitoBean(name = "reviewOrchestrator")
     private ReviewProcessor reviewProcessor;
 
     @Autowired

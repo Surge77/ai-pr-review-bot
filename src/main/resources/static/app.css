@@ -1,0 +1,19 @@
+:root { color-scheme: dark; }
+body { font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+       background: #0d1117; color: #c9d1d9; margin: 0; padding: 2rem; }
+h1 { font-size: 1.25rem; margin: 0 0 0.25rem; }
+#status { font-size: 0.85rem; color: #8b949e; margin-bottom: 1.5rem; }
+#status.up { color: #3fb950; }
+#status.down { color: #f85149; }
+.bar { height: 6px; background: #21262d; border-radius: 3px; overflow: hidden; margin: 0.5rem 0 1.5rem; }
+.bar > span { display: block; height: 100%; width: 0; background: #58a6ff; transition: width 0.3s; }
+ul { list-style: none; padding: 0; margin: 0; }
+li { padding: 0.5rem 0.75rem; border-left: 3px solid #30363d; margin-bottom: 0.25rem;
+     background: #161b22; border-radius: 0 4px 4px 0; font-size: 0.85rem; }
+li .stage { font-weight: 700; margin-right: 0.5rem; }
+.STARTED { border-left-color: #58a6ff; } .STARTED .stage { color: #58a6ff; }
+.FILE_REVIEWED { border-left-color: #3fb950; } .FILE_REVIEWED .stage { color: #3fb950; }
+.FILE_SKIPPED { border-left-color: #8b949e; } .FILE_SKIPPED .stage { color: #8b949e; }
+.FILE_FAILED { border-left-color: #f85149; } .FILE_FAILED .stage { color: #f85149; }
+.COMPLETED { border-left-color: #a371f7; } .COMPLETED .stage { color: #a371f7; }
+time { color: #6e7681; float: right; }

@@ -50,7 +50,7 @@ class AuditQueryServiceTest {
         when(repository.findByRepoFullNameOrderByCreatedAtDesc(REPO, pageable))
                 .thenReturn(new PageImpl<>(List.of(row())));
 
-        Page<ReviewSummaryResponse> page = service.listReviews(REPO, null, pageable);
+        Page<ReviewSummaryResponse> page = service.listReviews(REPO, null, null, pageable);
 
         assertThat(page.getContent()).hasSize(1);
         assertThat(page.getContent().getFirst().filePath()).isEqualTo("A.java");
@@ -58,16 +58,28 @@ class AuditQueryServiceTest {
     }
 
     @Test
-    @DisplayName("listReviews with a PR uses the PR-scoped query")
+    @DisplayName("listReviews with a PR uses the PR-scoped query, ignoring status")
     void list_by_pr() {
         Pageable pageable = PageRequest.of(0, 20);
         when(repository.findByRepoFullNameAndPrNumberOrderByCreatedAtDesc(REPO, 7, pageable))
                 .thenReturn(new PageImpl<>(List.of(row())));
 
-        Page<ReviewSummaryResponse> page = service.listReviews(REPO, 7, pageable);
+        Page<ReviewSummaryResponse> page = service.listReviews(REPO, 7, ReviewStatus.FAILED, pageable);
 
         assertThat(page.getContent()).hasSize(1);
         assertThat(page.getContent().getFirst().prNumber()).isEqualTo(7);
+    }
+
+    @Test
+    @DisplayName("listReviews with only a status uses the status-scoped query")
+    void list_by_status() {
+        Pageable pageable = PageRequest.of(0, 20);
+        when(repository.findByRepoFullNameAndStatusOrderByCreatedAtDesc(REPO, ReviewStatus.FAILED, pageable))
+                .thenReturn(new PageImpl<>(List.of(row())));
+
+        Page<ReviewSummaryResponse> page = service.listReviews(REPO, null, ReviewStatus.FAILED, pageable);
+
+        assertThat(page.getContent()).hasSize(1);
     }
 
     @Test

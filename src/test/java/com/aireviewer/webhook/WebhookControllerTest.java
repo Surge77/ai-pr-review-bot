@@ -7,11 +7,13 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.nio.charset.StandardCharsets;
+import java.time.Clock;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 
 import com.aireviewer.config.WebhookProperties;
+import com.aireviewer.config.WebhookRateLimitProperties;
 import com.aireviewer.kafka.PullRequestEventPublisher;
 import com.aireviewer.model.PullRequestEvent;
 import org.junit.jupiter.api.BeforeEach;
@@ -37,12 +39,32 @@ class WebhookControllerTest {
     @BeforeEach
     void setUp() {
         controller = new WebhookController(signatureValidator, payloadParser, eventPublisher,
-                new WebhookProperties("secret", List.of("opened", "synchronize")));
+                new WebhookProperties("secret", List.of("opened", "synchronize")),
+                allowingLimiter());
+    }
+
+    private static WebhookRateLimiter allowingLimiter() {
+        return new WebhookRateLimiter(new WebhookRateLimitProperties(1000, 60), Clock.systemUTC());
     }
 
     private static PullRequestEvent event(String action) {
         return new PullRequestEvent(7, "octo/repo", "octo", "h", "b", "url",
                 action, "octo", "d-1", Instant.parse("2026-05-29T00:00:00Z"));
+    }
+
+    @Test
+    void returns_429_when_rate_limit_exceeded_and_does_not_validate() {
+        WebhookRateLimiter saturated =
+                new WebhookRateLimiter(new WebhookRateLimitProperties(1, 60), Clock.systemUTC());
+        saturated.tryAcquire(); // consume the only token
+        WebhookController limited = new WebhookController(signatureValidator, payloadParser,
+                eventPublisher, new WebhookProperties("secret", List.of("opened")), saturated);
+
+        ResponseEntity<Map<String, String>> response =
+                limited.receive(BODY, SIG, "pull_request", "d-1");
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.TOO_MANY_REQUESTS);
+        verify(eventPublisher, never()).publish(any());
     }
 
     @Test

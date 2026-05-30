@@ -21,19 +21,30 @@ public class AuditQueryService {
     private final ReviewAuditLogRepository repository;
 
     /**
-     * Lists audit rows for a repository, newest first, optionally narrowed to one PR.
+     * Lists audit rows for a repository, newest first. A {@code prNumber} filter
+     * takes precedence over a {@code status} filter; with neither, all rows are returned.
      *
      * @param repoFullName {@code owner/repo}
-     * @param prNumber     PR to filter by, or {@code null} for all PRs
+     * @param prNumber     PR to filter by, or {@code null}
+     * @param status       status to filter by, or {@code null}
      * @param pageable     page request (page, size)
      * @return a page of review projections
      */
     @Transactional(readOnly = true)
-    public Page<ReviewSummaryResponse> listReviews(String repoFullName, Integer prNumber, Pageable pageable) {
-        Page<ReviewAuditLog> page = prNumber == null
-                ? repository.findByRepoFullNameOrderByCreatedAtDesc(repoFullName, pageable)
-                : repository.findByRepoFullNameAndPrNumberOrderByCreatedAtDesc(repoFullName, prNumber, pageable);
-        return page.map(ReviewSummaryResponse::from);
+    public Page<ReviewSummaryResponse> listReviews(
+            String repoFullName, Integer prNumber, ReviewStatus status, Pageable pageable) {
+        return resolvePage(repoFullName, prNumber, status, pageable).map(ReviewSummaryResponse::from);
+    }
+
+    private Page<ReviewAuditLog> resolvePage(
+            String repoFullName, Integer prNumber, ReviewStatus status, Pageable pageable) {
+        if (prNumber != null) {
+            return repository.findByRepoFullNameAndPrNumberOrderByCreatedAtDesc(repoFullName, prNumber, pageable);
+        }
+        if (status != null) {
+            return repository.findByRepoFullNameAndStatusOrderByCreatedAtDesc(repoFullName, status, pageable);
+        }
+        return repository.findByRepoFullNameOrderByCreatedAtDesc(repoFullName, pageable);
     }
 
     /**

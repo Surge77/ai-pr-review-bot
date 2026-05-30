@@ -9,6 +9,7 @@ import java.util.concurrent.TimeoutException;
 
 import com.aireviewer.config.LlmProperties;
 import com.aireviewer.model.ReviewFeedback;
+import jakarta.annotation.PreDestroy;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.stereotype.Service;
@@ -68,5 +69,11 @@ public class LLMReviewService {
             log.error("LLM review failed for {}: {}", filename, e.getMessage());
             return Optional.empty();
         }
+    }
+
+    /** Shuts down the review executor when the bean is destroyed. */
+    @PreDestroy
+    void shutdown() {
+        executor.shutdownNow();
     }
 }

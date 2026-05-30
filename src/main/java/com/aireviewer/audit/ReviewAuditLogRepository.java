@@ -20,6 +20,9 @@ public interface ReviewAuditLogRepository extends JpaRepository<ReviewAuditLog, 
     Page<ReviewAuditLog> findByRepoFullNameAndPrNumberOrderByCreatedAtDesc(
             String repoFullName, int prNumber, Pageable pageable);
 
+    Page<ReviewAuditLog> findByRepoFullNameAndStatusOrderByCreatedAtDesc(
+            String repoFullName, ReviewStatus status, Pageable pageable);
+
     long countByRepoFullName(String repoFullName);
 
     long countByRepoFullNameAndStatus(String repoFullName, ReviewStatus status);
